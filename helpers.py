@@ -1,6 +1,7 @@
 import dash_html_components as html
 import dash_core_components as dcc
 import dash_bootstrap_components as dbc
+from dash_extensions import Download
 import dash_table as dt
 import pandas as pd
 import numpy as np
@@ -54,9 +55,10 @@ def elisaquant(data, y, template):
     #fig.add_trace(go.Scatter(name = 'Curve'))
     children = [html.Div([
         dcc.Graph(figure = fig),
+        html.Br(),
         html.Div([
             dbc.Label("Sample Predictions", style = {'margin-right':'5px'}),
-            dbc.Button("Download Data", id = 'download-data', style = {'margin-left':'5px'})
+            dbc.Button("Download csv", id="btn"), Download(id="download")
         ], style = {'display':'inline-block'}),
         dt.DataTable(
             id='table',
@@ -68,4 +70,4 @@ def elisaquant(data, y, template):
                 {'if': {'column_id': 'Samples'},'width': '33%'},
                 {'if': {'column_id': 'Predictions'},'width': '66%'}])
     ], style = {'height':'750px', 'overflow':'scroll'})]
-    return children
+    return children, preds

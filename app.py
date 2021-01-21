@@ -3,10 +3,13 @@ import dash_core_components as dcc
 import dash_bootstrap_components as dbc
 import dash_html_components as html
 from dash.dependencies import Input, Output, State
+from dash_extensions.snippets import send_data_frame
 import pandas as pd
 import io
 import base64
 import helpers
+import json
+from datetime import datetime
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 application = app.server
@@ -129,6 +132,7 @@ app.layout = html.Div([
             dbc.Card([
                 dbc.CardHeader("Analysis"),
                 dbc.CardBody([
+                    html.Div(id='intermediate-data', style={'display': 'none'}),
                     html.Div(id='output-data-upload')
                 ])
             ], style = {'text-align':'center'})
@@ -141,7 +145,8 @@ app.layout = html.Div([
     ], id = 'footer')
 ])
 
-@app.callback(Output('output-data-upload', 'children'),
+@app.callback([Output('output-data-upload', 'children'),
+              Output('intermediate-data', 'children')],
               [Input('upload-data', 'contents'),
               Input('template-input','value'),
               Input('standard1','value'),
@@ -154,7 +159,7 @@ app.layout = html.Div([
               Input('standard8','value'),
               Input('run-elisaquant','n_clicks')])
 def update_output(data,template, standard1, standard2, standard3, standard4,
-    standard5, standard6, standard7, standard8, n_clicks):
+    standard5, standard6, standard7, standard8, n1):
     """
     """
     try:
@@ -165,21 +170,36 @@ def update_output(data,template, standard1, standard2, standard3, standard4,
         if 'csv' in data_type:
             df = pd.read_csv(io.StringIO(decoded.decode('utf-8')))
             children = [html.P("Data Uploaded")]
-        elif 'octet-stream' in data_type:
+        elif 'ms-excel' in data_type:
             df = pd.read_excel(io.BytesIO(decoded))
             children = [html.P("Data Uploaded")]
         else:
             children = [html.P("This file type is not supported. Please use a .csv or .xls file")]
-        #import pdb; pdb.set_trace()
     except:
         children = [html.P("Upload data for analysis")]
     #data analysis
-    if n_clicks is not None:
+    if n1 is not None:
         try:
-            children = helpers.elisaquant(df,standards,template)
+            children,preds = helpers.elisaquant(df,standards,template)
+            preds = preds.to_json()
         except:
             children = [html.P("An error occured during analysis. Please review your data and ensure it was entered properly.")]
-    return children
+            preds = None
+    else:
+        preds = None
+    return children, preds
+
+@app.callback(Output("download", "data"),
+    [Input('intermediate-data','children'),
+    Input('btn', 'n_clicks')])
+def generate_csv(data, n1):
+    if data is not None:
+        data = json.loads(data)
+        data = pd.DataFrame.from_dict(data)
+        if n1 is not None:
+            return send_data_frame(data.to_csv, filename=f"sample_predictions_{datetime.today().strftime('%Y-%m-%d')}.csv", index = False)
+    else:
+        return None
 
 @app.callback(Output('template-info', 'is_open'),
               [Input('temp-info-button', 'n_clicks')],
@@ -196,6 +216,9 @@ def standards_info_modal(n1, is_open):
     if n1:
         return not is_open
     return is_open
+
+
+
 
 if __name__ == '__main__':
     application.run(debug=True, port=8080)

@@ -5,7 +5,6 @@ An app to easily and reproducibly quantify analyte concentration
 
 ## To Do:
 - Develop visualization for model evaluation
-- Finish download data button
 - Containerize app
 - Deploy app to host
 
